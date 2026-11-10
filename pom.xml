@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  POM agregador: permite compilar y probar todos los microservicios con un solo comando
+  desde la raíz (mvn clean verify). Cada microservicio sigue siendo independiente.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.pedidos360</groupId>
+	<artifactId>pedidos360-backend</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+	<name>pedidos360-backend</name>
+
+	<modules>
+		<module>ms-pedidos360-bff</module>
+		<module>ms-pedidos360-catalog</module>
+		<module>ms-pedidos360-orders</module>
+		<module>ms-pedidos360-notifications</module>
+		<module>ms-pedidos360-tickets</module>
+		<module>ms-pedidos360-rabbit-admin</module>
+	</modules>
+</project>

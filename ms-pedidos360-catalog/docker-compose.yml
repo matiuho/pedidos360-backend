@@ -1,0 +1,15 @@
+services:
+  mysql-catalog:
+    image: mysql:8.0
+    container_name: pedidos360-catalog-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pedidos360_catalog
+    ports:
+      - "3307:3306"
+    volumes:
+      - catalog_mysql_data:/var/lib/mysql
+
+volumes:
+  catalog_mysql_data:

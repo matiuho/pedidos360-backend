@@ -1,0 +1,58 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: ms-pedidos360-tickets
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/pedidos360_tickets?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: ${MYSQL_ROOT_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:pedidos360}
+    password: ${RABBITMQ_PASSWORD:pedidos360}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        default-requeue-rejected: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# =========================================================
+# Nombres de mensajería centralizados de ms-pedidos360-tickets
+# =========================================================
+pedidos360:
+  rabbitmq:
+    exchanges:
+      pedidos: pedidos360.pedidos.exchange
+      tickets: pedidos360.tickets.exchange
+      dead-letter: pedidos360.dlx
+    routing-keys:
+      pedido-aceptado: pedido.estado.aceptado   # lo que consume este servicio
+      ticket-generado: ticket.generado          # lo que publica este servicio
+    queues:
+      pedidos-aceptados:
+        name: pedidos360.tickets.pedidos-aceptados
+        dlq: pedidos360.tickets.pedidos-aceptados.dlq
+        retry: pedidos360.tickets.pedidos-aceptados.retry
+    retry:
+      max-attempts: 3
+      delay-ms: 5000

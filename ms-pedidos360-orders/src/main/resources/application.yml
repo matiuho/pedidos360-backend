@@ -1,0 +1,74 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ms-pedidos360-orders
+
+  # Base de datos de pedidos (en Docker se sobrescribe con SPRING_DATASOURCE_*)
+  datasource:
+    url: jdbc:mysql://localhost:3306/db_pedidos360?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: ${MYSQL_ROOT_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Conexión a RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:pedidos360}
+    password: ${RABBITMQ_PASSWORD:pedidos360}
+    # El broker confirma cada publicación y devuelve los mensajes que no llegan a ninguna cola
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        # ACK manual: cada consumidor confirma (basicAck) o rechaza (basicReject) explícitamente
+        acknowledge-mode: manual
+        prefetch: 10
+        default-requeue-rejected: false
+
+# URL del microservicio Catalog (validación de productos y descuento de stock)
+catalog:
+  service:
+    url: ${CATALOG_SERVICE_URL:http://localhost:8081}
+
+# Swagger / OpenAPI
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /doc/swagger-ui.html
+
+# =========================================================
+# Nombres de mensajería centralizados (exchanges, routing keys y colas).
+# Ninguna clase de negocio escribe estos nombres a mano: se leen desde aquí
+# a través de RabbitProperties.
+# =========================================================
+pedidos360:
+  rabbitmq:
+    exchanges:
+      pedidos: pedidos360.pedidos.exchange      # topic: eventos del ciclo de vida del pedido
+      tickets: pedidos360.tickets.exchange      # topic: eventos de tickets/comprobantes
+      dead-letter: pedidos360.dlx               # direct: recibe los mensajes rechazados -> DLQ
+    routing-keys:
+      pedido-creado: pedido.creado
+      pedido-estado-prefijo: pedido.estado.     # + estado en minúsculas (pedido.estado.aceptado)
+      ticket-generado: ticket.generado
+    queues:
+      tickets-generados:
+        name: pedidos360.orders.tickets-generados
+        dlq: pedidos360.orders.tickets-generados.dlq
+        retry: pedidos360.orders.tickets-generados.retry
+    retry:
+      max-attempts: 3     # intentos totales antes de enviar a la DLQ
+      delay-ms: 5000      # espera en la cola de reintento antes de volver a la cola principal

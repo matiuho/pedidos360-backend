@@ -1,0 +1,30 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ms-pedidos360-rabbit-admin
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:pedidos360}
+    password: ${RABBITMQ_PASSWORD:pedidos360}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# =========================================================
+# Microsoft Entra ID (validación del JWT), igual que el BFF
+# =========================================================
+entra:
+  tenant-id: ${ENTRA_TENANT_ID:00000000-0000-0000-0000-000000000000}
+  issuer: ${ENTRA_ISSUER:https://login.microsoftonline.com/${entra.tenant-id}/v2.0}
+  jwk-set-uri: ${ENTRA_JWK_SET_URI:https://login.microsoftonline.com/${entra.tenant-id}/discovery/v2.0/keys}
+  audiences: ${ENTRA_AUDIENCES:00000000-0000-0000-0000-000000000000,api://pedidos360-api}
+
+# Orígenes permitidos para CORS (frontend Angular en desarrollo)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}

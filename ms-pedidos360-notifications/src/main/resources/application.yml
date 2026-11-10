@@ -1,0 +1,62 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ms-pedidos360-notifications
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/pedidos360_notifications?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: ${MYSQL_ROOT_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:pedidos360}
+    password: ${RABBITMQ_PASSWORD:pedidos360}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        default-requeue-rejected: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# =========================================================
+# Nombres de mensajería centralizados de ms-pedidos360-notifications
+# =========================================================
+pedidos360:
+  rabbitmq:
+    exchanges:
+      pedidos: pedidos360.pedidos.exchange
+      tickets: pedidos360.tickets.exchange
+      dead-letter: pedidos360.dlx
+    routing-keys:
+      pedidos-todos: pedido.#                 # creado y todos los cambios de estado
+      ticket-generado: ticket.generado
+    queues:
+      pedidos:
+        name: pedidos360.notifications.pedidos
+        dlq: pedidos360.notifications.pedidos.dlq
+        retry: pedidos360.notifications.pedidos.retry
+      tickets:
+        name: pedidos360.notifications.tickets
+        dlq: pedidos360.notifications.tickets.dlq
+        retry: pedidos360.notifications.tickets.retry
+    retry:
+      max-attempts: 3
+      delay-ms: 5000

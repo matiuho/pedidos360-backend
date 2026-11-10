@@ -1,0 +1,25 @@
+# Java / Maven
+target/
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE / SO
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+.sts4-cache/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Variables de entorno con secretos
+.env
