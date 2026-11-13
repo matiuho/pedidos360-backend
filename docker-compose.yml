@@ -42,10 +42,12 @@ services:
   catalog:
     build: ./ms-pedidos360-catalog
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pedidos360_catalog?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
@@ -54,12 +56,14 @@ services:
   orders:
     build: ./ms-pedidos360-orders
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_pedidos360?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
@@ -72,12 +76,14 @@ services:
   notifications:
     build: ./ms-pedidos360-notifications
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pedidos360_notifications?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       RABBITMQ_HOST: rabbitmq
@@ -87,12 +93,14 @@ services:
   tickets:
     build: ./ms-pedidos360-tickets
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pedidos360_tickets?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       RABBITMQ_HOST: rabbitmq
@@ -102,12 +110,14 @@ services:
   rabbit-admin:
     build: ./ms-pedidos360-rabbit-admin
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       rabbitmq:
         condition: service_healthy
     ports:
       - "8084:8084"
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER:-pedidos360}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-pedidos360}
@@ -118,6 +128,7 @@ services:
   bff:
     build: ./ms-pedidos360-bff
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       - catalog
       - orders
@@ -125,6 +136,7 @@ services:
     ports:
       - "${BFF_PORT:-8080}:8080"
     environment:
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms128m -Xmx320m}
       CATALOG_SERVICE_URL: http://catalog:8081
       ORDERS_SERVICE_URL: http://orders:8082
       NOTIFICATIONS_SERVICE_URL: http://notifications:8083

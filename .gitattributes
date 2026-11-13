@@ -1,0 +1,4 @@
+# Scripts de Linux con fin de línea LF (si no, fallan en la EC2)
+*.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
