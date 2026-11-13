@@ -169,3 +169,173 @@ RABBIT_IT=true mvn test -Dtest=RabbitAdminServiceIT # contra un RabbitMQ real (d
 * *Transactional Outbox* para garantizar la publicación aunque el broker esté caído justo después del commit.
 * Colas *quorum* y réplicas de RabbitMQ para alta disponibilidad.
 * Endpoint en rabbit-admin para reprocesar mensajes desde la DLQ.
+
+## 10. Guía rápida para el examen (AWS + Entra ID)
+
+Esta sección resume el orden recomendado para levantar el sistema desde cero en
+una instancia AWS Academy. Los valores de `.env` son locales y nunca deben
+subirse al repositorio.
+
+### 10.1 Preparar la instancia EC2
+
+Usa Ubuntu 24.04, preferentemente `t3.medium`, y configura el Security Group
+con estas reglas:
+
+| Puerto | Origen | Uso |
+|---:|---|---|
+| 22 | My IP | SSH/EC2 Instance Connect |
+| 80 | `0.0.0.0/0` | Frontend HTTP |
+| 15672 | My IP, temporal | Consola RabbitMQ durante la demostración |
+
+El puerto `15672` debe eliminarse del Security Group después de tomar las
+capturas. No abras públicamente los puertos `3306` ni `5672`.
+
+En la instancia instala las herramientas y descarga los repositorios:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin git
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+newgrp docker
+
+cd ~
+git clone https://github.com/matiuho/pedidos360-backend.git
+git clone https://github.com/matiuho/pedidos360-frontend.git
+cd ~/pedidos360-backend
+git pull origin main
+cd ~/pedidos360-frontend
+git pull origin main
+```
+
+### 10.2 Configurar Microsoft Entra ID
+
+En `https://entra.microsoft.com/`, entra a **App registrations**. Si aparece
+un error `401`, la cuenta no tiene acceso al tenant: se debe usar la cuenta
+institucional correcta o pedir al administrador el permiso **Application
+Developer**.
+
+#### Aplicación API
+
+Registra una aplicación llamada `pedidos360-api` y, en **Expose an API**:
+
+1. Define el Application ID URI como `api://pedidos360-api`.
+2. Crea el scope delegado `Pedidos.ReadWrite`.
+3. Crea los App Roles asignables a usuarios o grupos:
+   `ROLE_ADMINISTRADOR`, `ROLE_OPERADOR` y `ROLE_CLIENTE`.
+
+#### Aplicación SPA
+
+Registra una aplicación llamada `pedidos360-web`. En **Authentication**, agrega
+una plataforma **Single-page application (SPA)** con estas URI:
+
+```text
+http://IP_PUBLICA_EC2
+```
+
+En **API permissions**, agrega el permiso delegado
+`pedidos360-api → Pedidos.ReadWrite`.
+
+Guarda estos identificadores públicos:
+
+```text
+Tenant ID
+Client ID de pedidos360-api
+Client ID de pedidos360-web
+```
+
+En **Enterprise applications**, asigna los App Roles a los usuarios de prueba.
+No se necesita crear un client secret para este flujo SPA.
+
+### 10.3 Crear el archivo `.env`
+
+En `~/pedidos360-backend`:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Completa los valores:
+
+```dotenv
+MYSQL_ROOT_PASSWORD=una-clave-larga
+RABBITMQ_USER=pedidos360
+RABBITMQ_PASSWORD=otra-clave-larga
+ENTRA_TENANT_ID=<tenant-id>
+ENTRA_AUDIENCES=<client-id-api>,api://pedidos360-api
+ENTRA_CLIENT_ID=<client-id-spa>
+PUBLIC_URL=http://<ip-publica-ec2>
+CORS_ALLOWED_ORIGINS=http://<ip-publica-ec2>
+FRONTEND_PORT=80
+```
+
+Verifica que Compose lea las variables sin dejar valores vacíos:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.aws.yml config
+```
+
+### 10.4 Levantar y verificar
+
+```bash
+cd ~/pedidos360-backend
+docker compose -f docker-compose.yml -f docker-compose.aws.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.aws.yml ps
+```
+
+El estado esperado es `Up` y, para MySQL y RabbitMQ, `healthy`. Abre:
+
+```text
+http://IP_PUBLICA_EC2
+```
+
+Si el build es lento, primero se puede validar la infraestructura:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.aws.yml up -d mysql rabbitmq
+docker compose -f docker-compose.yml -f docker-compose.aws.yml ps
+```
+
+### 10.5 Evidencia de RabbitMQ
+
+Con el puerto `15672` permitido temporalmente desde **My IP**, abre:
+
+```text
+http://IP_PUBLICA_EC2:15672
+```
+
+Usa las credenciales `RABBITMQ_USER` y `RABBITMQ_PASSWORD` de `.env`. Captura:
+
+1. **Overview**: nodo activo y exchanges.
+2. **Queues and Streams**: colas principales, `.retry` y `.dlq`.
+3. Una DLQ con `Ready: 1` después de publicar `{esto no es json}` en
+   `pedidos360.notifications.pedidos`.
+4. El log del consumidor:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.aws.yml \
+  logs --tail=200 notifications | grep -E "\[DLQ\]|DLQ|no recuperable"
+```
+
+Para evidenciar reintentos, detén MySQL, acepta un pedido, revisa el log y
+vuelve a iniciarlo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.aws.yml stop mysql
+docker compose -f docker-compose.yml -f docker-compose.aws.yml logs -f tickets notifications
+docker compose -f docker-compose.yml -f docker-compose.aws.yml start mysql
+```
+
+### 10.6 Evidencia final y cierre
+
+Captura también:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.aws.yml ps
+docker compose -f docker-compose.yml -f docker-compose.aws.yml logs --tail=100 bff rabbit-admin frontend
+```
+
+Finalmente elimina el acceso temporal a `15672` y restringe nuevamente el
+puerto `22` a **My IP**. Nunca compartas el archivo `.env`, contraseñas,
+tokens ni client secrets.
